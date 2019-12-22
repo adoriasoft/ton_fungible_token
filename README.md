@@ -157,7 +157,7 @@
     interface example: *wallet.fif \<owner-wallet\> \<contract-addr\> \<seqno\> \<amount-grams\> -B \<body-cell\> \<query-output\>*
 
     ```bash
-    $ ./fiftcompile.sh -s tools/wallet.fif {contract id inited} {seqno} 1 -B queries/body-transfer.boc queries/token-transfer
+    $ ./fiftcompile.sh -s tools/wallet.fif wallets/alice-wallet {contract id inited} {seqno} 1 -B queries/body-transfer.boc queries/token-transfer
     ```
 
     Copy into lite-client folder.
