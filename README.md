@@ -152,7 +152,7 @@
 
 7. Wrap transfer message in the owner wallet query.
 
-    *Important notice: wallet should contain at least 1 Gram. It will be used to pay the fees to access token contract and remaining Grams will be returned back.*
+    **Important notice: _wallet should contain at least 1 Gram. It will be used to pay the fees to access token contract and remaining Grams will be returned back._**
 
     interface example: *wallet.fif \<owner-wallet\> \<contract-addr\> \<seqno\> \<amount-grams\> -B \<body-cell\> \<query-output\>*
 
