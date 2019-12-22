@@ -152,6 +152,8 @@
 
 7. Wrap transfer message in the owner wallet query.
 
+    *Important notice: wallet should contain at least 1 Gram. It will be used to pay the fees to access token contract and remaining Grams will be returned back.*
+
     interface example: *wallet.fif \<owner-wallet\> \<contract-addr\> \<seqno\> \<amount-grams\> -B \<body-cell\> \<query-output\>*
 
     ```bash
@@ -174,7 +176,7 @@
     lite-client> last 
     ```
     
-    Publish contract
+    Publish transfer query
     ```bash
     lite-client> sendfile token-transfer.boc
     ```
@@ -196,6 +198,7 @@
     - "Network code is" - Will use it as a {owner network}.
     - "Address uint256 is" - Will use it as a {owner address}.
 
+    Get the owner balance
     ```bash
     lite-client> runmethod {contract id inited} getbalance {owner network} {owner address}
     ```
