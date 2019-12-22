@@ -70,6 +70,7 @@
     $ cp {path}/project/ton_fungible_token/queries/deploy.boc {path}/ton/build/lite-client
     ```
     
+    Run lite-client
     ```bash
     $ cd {path}/ton/build/lite-client
     $ ./lite-client -C ton-lite-client-test1.config.json -D db
@@ -139,12 +140,12 @@
     lite-client> last
     ```
 
-    We can see new information about contract if it deploy.
+    We can see new information about contract when it is deployed.
     ```bash
     lite-client> getaccount {owner id}
     ```
 
-    Get a nonce number. (result field is a nonce number. Will use it as a {seqno})
+    Get a nonce number. Result field is a nonce number. Will use it as a {seqno}.
     ```bash
     lite-client> runmethod {owner id} seqno
     ```
@@ -157,11 +158,12 @@
     $ ./fiftcompile.sh -s tools/wallet.fif {contract id inited} {seqno} 1 -B queries/body-transfer.boc queries/token-transfer
     ```
 
-    Copy into light wallet.
+    Copy into lite-client folder.
     ```bash
     $ cp queries/token-transfer.boc {path}/ton/build/lite-client 
     ```
     
+    Run lite-client
     ```bash
     $ cd {path}/ton/build/lite-client
     $ ./lite-client -C ton-lite-client-test1.config.json -D db
