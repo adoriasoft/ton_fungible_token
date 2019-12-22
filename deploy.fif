@@ -1,0 +1,82 @@
+#!/usr/bin/fift -s
+
+// Copyright (c) 2019 adoriasoft
+// Andrey Lekar andrey_lekar@adoriasoft.com
+// Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
+// Volodymyr Kostanda ceo@adoriasoft.com
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <filename-base> <owner-address-or-file> <decimals> <supply> [<token-name> <token-symbol>]" cr
+  ."Creates a request to deploy token contract created by token-contract.fc, "
+  ."with private key loaded from file <filename-base>.pk." cr
+  ."<owner-address-or-file> is an owner of the token who will have an entire token balance. "
+  ."<owner-address-or-file> is a TON address or a file if prefixed with @." cr
+  ."<decimals> contains token decimals so 1 user token will have 10^decimals contract tokens." cr
+  ."<supply> contains token supply." cr
+  ."<token-name> name of your token. Optional." cr
+  ."<token-symbol> short name of your token. Optional." cr
+  ."Contract address is saved into file <filename-base>.addr and deployment query is "
+  ."saved into queries/deploy.boc" cr
+  ."Example: " cr
+  ."fift -s deploy.fif wallets/contract-wallet @wallets/alice-wallet.addr 0 1000 TON TON" cr
+  1 halt
+} : usage
+
+$# 4 < ' usage if
+
+$1 =: filebase
+$2 =: owner_address_or_file
+$3 parse-int =: decimals
+$4 parse-int =: supply
+def? $5 { @' $5 } { "" } cond constant tokenname
+def? $6 { @' $6 } { "" } cond constant tokensymbol
+
+filebase ".pk" $+ constant filename
+filebase ".addr" $+ constant addrname
+"queries/deploy.boc" constant deployname
+
+owner_address_or_file -1 parse-load-address
+drop
+constant owner_address
+constant wc
+
+."Creating contract wallet in workchain " wc . cr
+."Contract owner is " wc owner_address .addr cr
+
+filename load-generate-keypair
+drop drop
+
+"generated/contract-code.fif" include constant appcode
+
+variable balances dictnew balances !
+variable approvals dictnew approvals !
+
+<b tokenname $, b> constant tokennamecell
+<b tokensymbol $, b> constant tokensymbolcell
+
+// setup balances to give owner_address the entire supply
+variable network_balances dictnew network_balances !
+<b supply 256 u, b> <s owner_address network_balances @ 256 udict! drop network_balances !
+<b network_balances @ ref, wc balances @ 8 b>idict! drop balances !
+
+<b 0 1 u, tokennamecell ref, decimals 8 u, tokensymbolcell ref, supply 256 u, balances @ dict, approvals @ dict, b> constant appdata
+null constant applibs
+<b b{0011} s, appcode ref, appdata ref, applibs dict, b> constant stateinit
+<b b{0} s, b> constant extmsg
+
+stateinit ."StateInit: " <s csr. cr
+stateinit hashu wc swap 2dup 2constant wallet_addr
+
+."new wallet address = " 2dup .addr cr
+2dup addrname save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+
+<b b{1000100} s, wallet_addr addr, b{000010} s, stateinit <s s, b{0} s, extmsg <s s, b>
+constant msginit
+
+msginit ."External message for initialization is " <s csr. cr
+msginit 2 boc+>B dup Bx. cr
+deployname tuck B>file
+."(Saved wallet creating query to file " type .")" cr

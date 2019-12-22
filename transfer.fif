@@ -1,0 +1,41 @@
+#!/usr/bin/fift -s
+
+// Copyright (c) 2019 adoriasoft
+// Andrey Lekar andrey_lekar@adoriasoft.com
+// Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
+// Volodymyr Kostanda ceo@adoriasoft.com
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <query-id> <recipient> <amount>" cr
+  ."Creates a request to transfer tokens using the token contract." cr
+  ."<query-id> defines query id for the message, may remain 0 or 1 for messages from simple wallets." cr
+  ."<recipient> is a TON address or a file if prefixed with @." cr
+  ."<amount> amount of tokens to be sent." cr
+  ."Transfer query body is saved into queries/body-transfer.boc. "
+  ."Query body should not be directly sent to the network. Use wallet.fif script with -B <query-body> parameter "
+  ."to embed query body in the wallet contract query." cr
+  ."Example: " cr
+  ."fift -s transfer.fif 0 @wallets/bob-wallet.addr 10" cr
+  1 halt
+} : usage
+
+$# 3 < ' usage if
+
+$1 parse-int =: query_id
+$2 =: recipient_or_file
+$3 parse-int =: amount
+"queries/body-transfer.boc" constant deployname
+
+recipient_or_file true parse-load-address
+drop
+constant recipient_address
+constant recipient_network
+1 constant op // op = transfer
+
+<b op 32 u, query_id 64 u, amount 256 u, recipient_network 8 i, recipient_address 256 u, b> constant intmsg
+
+intmsg ."Internal message for the contract is " <s csr. cr
+intmsg 2 boc+>B dup Bx. cr
+deployname tuck B>file
+."(Saved wallet creating query to file " type .")" cr

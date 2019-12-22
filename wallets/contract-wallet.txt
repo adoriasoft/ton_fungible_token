@@ -1,0 +1,3 @@
+new wallet address = -1:362f571d890e29f66420a2da16591595acff8f031f51cf905ec5bc0bdb55ecb9 
+Non-bounceable address (for init): 0f82L1cdiQ4p9mQgotoWWRWVrP-PAx9Rz5BexbwL21XsuQHr
+Bounceable address (for later access): kf82L1cdiQ4p9mQgotoWWRWVrP-PAx9Rz5BexbwL21XsuVwu

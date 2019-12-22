@@ -1,0 +1,42 @@
+#!/usr/bin/fift -s
+
+// Copyright (c) 2019 adoriasoft
+// Andrey Lekar andrey_lekar@adoriasoft.com
+// Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
+// Volodymyr Kostanda ceo@adoriasoft.com
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <query-id> <spender> <amount>" cr
+  ."Creates a request to approve tokens using the token contract." cr
+  ."<query-id> defines query id for the message, may remain 0 or 1 for messages from simple wallets." cr
+  ."<spender> is a TON address or a file if prefixed with @. <spender> will be able to use tokens "
+  ."on behalf of the sender." cr
+  ."<amount> amount of tokens to be approved for spending." cr
+  ."Approval query body is saved into queries/body-approve.boc. "
+  ."Query body should not be directly sent to the network. Use wallet.fif script with -B <query-body> parameter "
+  ."to embed query body in the wallet contract query." cr
+  ."Example: " cr
+  ."fift -s approve.fif 0 @wallets/bob-wallet.addr 10" cr
+  1 halt
+} : usage
+
+$# 3 < ' usage if
+
+$1 parse-int =: query_id
+$2 =: spender_or_file
+$3 parse-int =: amount
+"queries/body-approve.boc" constant deployname
+
+spender_or_file true parse-load-address
+drop
+constant spender_address
+constant spender_network
+2 constant op // op = approve
+
+<b op 32 u, query_id 64 u, amount 256 u, spender_network 8 i, spender_address 256 u, b> constant intmsg
+
+intmsg ."Internal message for the contract is " <s csr. cr
+intmsg 2 boc+>B dup Bx. cr
+deployname tuck B>file
+."(Saved wallet creating query to file " type .")" cr

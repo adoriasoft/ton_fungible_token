@@ -1,0 +1,111 @@
+// Copyright (c) 2019 adoriasoft
+// Andrey Lekar andrey_lekar@adoriasoft.com
+// Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
+// Volodymyr Kostanda ceo@adoriasoft.com
+
+"Asm.fif" include
+"TonUtil.fif" include
+
+"../generated/contract-code.fif" include
+constant code
+
+-1 constant wc
+500 constant owner_address
+1 constant decimals
+1000 constant supply
+"TON" constant tokenname
+"TON" constant tokensymbol
+
+variable balances dictnew balances !
+variable approvals dictnew approvals !
+
+<b tokenname $, b> constant tokennamecell
+<b tokensymbol $, b> constant tokensymbolcell
+
+// setup balances to give owner_address the entire supply
+variable network_balances dictnew network_balances !
+<b supply 256 u, b> <s owner_address network_balances @ 256 udict! drop network_balances !
+<b network_balances @ ref, wc balances @ 8 b>idict! drop balances !
+
+<b 0 1 u, tokennamecell ref, decimals 8 u, tokensymbolcell ref, supply 256 u, balances @ dict, approvals @ dict, b> constant appdata
+null constant applibs
+
+// payment attached to the internal message
+GR$10 constant payment
+<b 
+0 4 u, // internal message flags - not bounced
+b{100} s, // sender address type
+wc 8 i, // sender address network
+owner_address 256 u, // sender address
+b> constant intmsgcell
+
+0 constant queryid // some query id - can be set to any value
+2 constant op // op = approve
+10 constant amount // amount of tokens to be approved
+600 constant spender_address // who is approved to spend tokens
+
+<b op 32 u, queryid 64 u, amount 256 u, wc 8 i, spender_address 256 u, b> constant intmsg
+
+payment
+intmsgcell
+intmsg <s
+0
+code <s
+appdata
+runvm
+
+dup constant appdata
+drop drop
+
+// now we prepare a transferFrom message from the spender
+
+<b 
+0 4 u, // internal message flags - not bounced
+b{100} s, // sender address type
+wc 8 i, // sender address network
+spender_address 256 u, // sender address
+b> constant intmsgcell
+
+0 constant queryid // some query id - can be set to any value
+3 constant op // op = transferFrom
+10 constant amount // amount of tokens to be transfered
+700 constant recipient_address // who will receive tokens
+
+<b op 32 u, queryid 64 u, amount 256 u, wc 8 i, owner_address 256 u, wc 8 i, recipient_address 256 u, b> constant intmsg
+
+payment
+intmsgcell
+intmsg <s
+0
+code <s
+appdata
+runvm
+
+dup constant appdata
+drop drop
+
+// look into contract-code.fif: 127397 equals to getbalance method
+127397 constant method
+
+wc
+owner_address
+method
+code <s
+appdata
+runvm
+drop drop
+
+."Owner's balance is: " . cr
+."Expected balance is: " supply amount - . cr
+
+wc
+recipient_address
+method
+code <s
+appdata
+runvm
+drop drop
+
+."Recipient balance is: " . cr
+."Expected balance is: " amount . cr
+255 halt

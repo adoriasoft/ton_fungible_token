@@ -1,0 +1,29 @@
+// Copyright (c) 2019 adoriasoft
+// Andrey Lekar andrey_lekar@adoriasoft.com
+// Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
+// Volodymyr Kostanda ceo@adoriasoft.com
+
+"Asm.fif" include
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <address-or-file>]" cr
+  ."Parses provided address or file if prefixed with @. Use this tool to convert TON address format "
+  ."into pair of the network code and uint256 address." cr
+  ."Example: " cr
+  ."fift -s parse-address.fif 0f_GpTe7aMUHIOg9fx2f2lXdVjSZiei3_8dtO6CnMAWBamIn" cr
+  1 halt
+} : usage
+
+$# 1 < ' usage if
+
+$1 =: address_or_file
+
+address_or_file
+-1
+parse-load-address
+drop
+swap
+
+."Network code is: " . cr
+."Address uint256 is: " . cr
+255 halt
