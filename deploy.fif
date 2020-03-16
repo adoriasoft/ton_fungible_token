@@ -40,6 +40,7 @@ owner_address_or_file -1 parse-load-address
 drop
 constant owner_address
 constant wc
+<b wc 8 i, owner_address 256 u, b> <s constant owner_address_full
 
 ."Creating contract wallet in workchain " wc . cr
 ."Contract owner is " wc owner_address .addr cr
@@ -56,9 +57,7 @@ variable approvals dictnew approvals !
 <b tokensymbol $, b> constant tokensymbolcell
 
 // setup balances to give owner_address the entire supply
-variable network_balances dictnew network_balances !
-<b supply 256 u, b> <s owner_address network_balances @ 256 udict! drop network_balances !
-<b network_balances @ ref, wc balances @ 8 b>idict! drop balances !
+<b supply 256 u, b> <s owner_address_full balances @ 264 sdict! drop balances !
 
 <b 0 1 u, tokennamecell ref, decimals 8 u, tokensymbolcell ref, supply 256 u, balances @ dict, approvals @ dict, b> constant appdata
 null constant applibs

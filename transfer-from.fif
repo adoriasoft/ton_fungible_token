@@ -41,8 +41,6 @@ drop
 constant recipient_address
 constant recipient_network
 
-owner_network recipient_network = { ."Transfers on the different networks are not supported!" cr 255 halt } ifnot
-
 3 constant op // op = transferFrom
 
 <b op 32 u, query_id 64 u, amount 256 u, owner_network 8 i, owner_address 256 u, recipient_network 8 i, recipient_address 256 u, b> constant intmsg

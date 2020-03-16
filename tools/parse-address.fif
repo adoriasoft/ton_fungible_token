@@ -1,4 +1,6 @@
-// Copyright (c) 2019 adoriasoft
+#!/usr/bin/fift -s
+
+// Copyright (c) 2019-2020 adoriasoft
 // Andrey Lekar andrey_lekar@adoriasoft.com
 // Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
 // Volodymyr Kostanda ceo@adoriasoft.com

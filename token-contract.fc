@@ -1,6 +1,6 @@
 ;; #!/usr/bin/func
 ;;
-;; Copyright (c) 2019 adoriasoft
+;; Copyright (c) 2019-2020 adoriasoft
 ;; Andrey Lekar andrey_lekar@adoriasoft.com
 ;; Alexey Pozhylenkov alex_pozhilenkov@adoriasoft.com
 ;; Volodymyr Kostanda ceo@adoriasoft.com
@@ -13,11 +13,10 @@ int ApiOps::Approve() inline             { return 2; }
 int ApiOps::TransferFrom() inline        { return 3; }
 
 int Token::Ok() inline                   { return 0x80000000; }
-int Token::WrongNetwork() inline         { return 0x80000001; }
-int Token::WrongSender() inline          { return 0x80000002; }
-int Token::WrongRecipient() inline       { return 0x80000003; }
-int Token::NoFunds() inline              { return 0x80000004; }
-int Token::NoAllowance() inline          { return 0x80000005; }
+int Token::WrongSender() inline          { return 0x80000001; }
+int Token::WrongRecipient() inline       { return 0x80000002; }
+int Token::NoFunds() inline              { return 0x80000003; }
+int Token::NoAllowance() inline          { return 0x80000004; }
 int Token::NoOp() inline                 { return 0xFFFFFFFF; }
 
 ;; ---------------------------------- state
@@ -29,25 +28,34 @@ int Token::NoOp() inline                 { return 0xFFFFFFFF; }
 ;;   cell symbol,
 ;;   uint256 supply,
 ;;   balances : {
-;;     int8 network : {
-;;       uint256 address : uint256 amount
-;;     } 
+;;     slice address : uint256 amount
 ;;   },
 ;;   approvals : {
-;;     int8 network : {
-;;       uint256 sender : {
-;;         uint256 spender: uint256 amount
-;;       }
+;;     slice sender : {
+;;       slice spender: uint256 amount
 ;;     } 
 ;;   }
 
 ;; ---------------------------------- pure functions
 
+;; create 264 bits slice from the (network, address) pair
+;; returns (slice address)
+slice pack_addr(int wc, int addr) {
+  return begin_cell().store_int(wc, 8).store_uint(addr, 256).end_cell().begin_parse();
+}
+
+;; decode TON standard address and pack to 264 bits slice
+;; returns (slice address)
+slice pack_addr_from_std(slice addr) {
+  (int addr_network, int addr_addr) = addr.parse_std_addr();
+  return pack_addr(addr_network, addr_addr);
+}
+
 ;; update 'balances' in order to move 'amount' of tokens from 'from' to 'to'
 ;; returns (cell balances, int result)
-(cell, int) spend_balances(cell balances, int from, int to, int amount) {
-  ;; look up for the sender's address in the balances
-  (slice from_record, int from_found) = balances.udict_get?(256, from);
+(cell, int) spend_balances(cell balances, slice from, slice to, int amount) {
+  ;; look up for the sender address in the balances
+  (slice from_record, int from_found) = balances.dict_get?(264, from);
   if (from_found == 0) {
     return (balances, Token::WrongSender());
   }
@@ -60,44 +68,44 @@ int Token::NoOp() inline                 { return 0xFFFFFFFF; }
 
   from_balance = from_balance - amount;
 
-  (slice recipient_record, int recipient_found) = balances.udict_get?(256, to);
+  (slice recipient_record, int recipient_found) = balances.dict_get?(264, to);
 
   if (recipient_found) {
     int recipient_balance = recipient_record~load_uint(256);
     amount = amount + recipient_balance;
   }
 
-  ;; update the sender's and recipient's balance
-  balances~udict_set_builder(256, from, begin_cell().store_uint(from_balance, 256));
-  balances~udict_set_builder(256, to, begin_cell().store_uint(amount, 256));
+  ;; update the sender and recipient balance
+  balances~dict_set_builder(264, from, begin_cell().store_uint(from_balance, 256));
+  balances~dict_set_builder(264, to, begin_cell().store_uint(amount, 256));
   return (balances, Token::Ok());
 }
 
 ;; set 'approvals' in order to allow 'spender' to spend 'amount' of tokens from 'from'
 ;; returns (cell approvals, int result)
-(cell, int) set_approval(cell approvals, int from, int spender, int amount) {
-  ;; look up for the sender's address in the approvals
-  cell from_record = approvals.udict_get_ref(256, from);
+(cell, int) set_approval(cell approvals, slice from, slice spender, int amount) {
+  ;; look up for the sender address in the approvals
+  cell from_record = approvals.dict_get_ref(264, from);
   if (from_record.cell_null?()) {
     from_record = new_dict();
   }
 
-  ;; update the spender's allowance
-  from_record~udict_set_builder(256, spender, begin_cell().store_uint(amount, 256));
-  approvals~udict_set_ref(256, from, from_record);
+  ;; update the spender allowance
+  from_record~dict_set_builder(264, spender, begin_cell().store_uint(amount, 256));
+  approvals~dict_set_ref(264, from, from_record);
   return (approvals, Token::Ok());
 }
 
 ;; update 'approvals' in order to spend 'amount' of tokens from 'from' by the 'spender' 
 ;; returns (cell approvals, int result)
-(cell, int) spend_approval(cell approvals, int from, int spender, int amount) {
-  ;; look up for the sender's address in the approvals
-  cell from_record = approvals.udict_get_ref(256, from);
+(cell, int) spend_approval(cell approvals, slice from, slice spender, int amount) {
+  ;; look up for the sender address in the approvals
+  cell from_record = approvals.dict_get_ref(264, from);
   if (from_record.cell_null?()) {
     return (approvals, Token::WrongSender());
   }
 
-  (slice spender_record, int spender_found) = from_record.udict_get?(256, spender);
+  (slice spender_record, int spender_found) = from_record.dict_get?(264, spender);
   if (spender_found == 0) {
     return (approvals, Token::NoAllowance());
   }
@@ -108,32 +116,11 @@ int Token::NoOp() inline                 { return 0xFFFFFFFF; }
     return (approvals, Token::NoAllowance());
   }
 
-  ;; update the spender's allowance
+  ;; update the spender allowance
   spender_allowed = spender_allowed - amount;
-  from_record~udict_set_builder(256, spender, begin_cell().store_uint(spender_allowed, 256));
-  approvals~udict_set_ref(256, from, from_record);
+  from_record~dict_set_builder(264, spender, begin_cell().store_uint(spender_allowed, 256));
+  approvals~dict_set_ref(264, from, from_record);
   return (approvals, Token::Ok());
-}
-
-;; update storage 'ds' in order to move 'amount' tokens from 'from' to 'recipient'
-;; returns (var ds, int result)
-(cell, int) transfer_internal(int from_network, int from_addr, int query_id, int amount,
-                              int recipient_addr, cell balances) {
-  ;; first look up for the sender's network
-  cell network_balances = balances.idict_get_ref(8, from_network);
-  if (network_balances.cell_null?()) {
-    return (balances, Token::WrongSender());
-  }
-
-  (network_balances, int result) = spend_balances(network_balances, from_addr, recipient_addr, amount);
-
-  if (result != Token::Ok()) {
-    return (balances, result);
-  }
-
-  ;; update the data in the sender's network
-  balances~idict_set_ref(8, from_network, network_balances);
-  return (balances, Token::Ok());
 }
 
 ;; ---------------------------------- impure functions
@@ -192,16 +179,12 @@ _ load_data() impure {
 }
 
 ;; send 'amount' tokens to the 'recipient'
-() transfer(slice from, int query_id, int amount, int recipient_network, int recipient_addr) impure {
+() transfer(slice from, int query_id, int amount, slice recipient_addr) impure {
   var ds = load_data();
   (cell name, int decimals, cell symbol, int supply, cell balances, cell approvals) = ds;
-  (int from_network, int from_addr) = from.parse_std_addr();
+  slice from_addr = pack_addr_from_std(from);
 
-  if (from_network != recipient_network) {
-    return transferResponse(from, query_id, Token::WrongNetwork());
-  }
-
-  (balances, int result) = transfer_internal(from_network, from_addr, query_id, amount, recipient_addr, balances);
+  (balances, int result) = spend_balances(balances, from_addr, recipient_addr, amount);
 
   if (result != Token::Ok()) {
     return transferResponse(from, query_id, result);
@@ -218,30 +201,18 @@ _ load_data() impure {
 }
 
 ;; allow 'spender' to spend 'amount' tokens from the sender 'from' address
-() approve(slice from, int query_id, int amount, int spender_network, int spender_addr) impure {
+() approve(slice from, int query_id, int amount, slice spender_addr) impure {
   var ds = load_data();
   (cell name, int decimals, cell symbol, int supply, cell balances, cell approvals) = ds;
+  slice from_addr = pack_addr_from_std(from);
 
-  (int from_network, int from_addr) = from.parse_std_addr();
-
-  if (from_network != spender_network) {
-    return approveResponse(from, query_id, Token::WrongNetwork());
-  }
-
-  ;; look for approvals record
-  cell network_approvals = approvals.idict_get_ref(256, from_network);
-  if (network_approvals.cell_null?()) {
-    network_approvals = new_dict();
-  }
-
-  (network_approvals, int result) = set_approval(network_approvals, from_addr, spender_addr, amount);
+  (approvals, int result) = set_approval(approvals, from_addr, spender_addr, amount);
 
   if (result != Token::Ok()) {
     return approveResponse(from, query_id, result);
   }
 
   ;; update approvals info
-  approvals~idict_set_ref(8, from_network, network_approvals);
   ds = (name, decimals, symbol, supply, balances, approvals);
   store_data(ds);
   return approveResponse(from, query_id, Token::Ok());
@@ -254,41 +225,24 @@ _ load_data() impure {
 
 ;; send 'amount' of approved tokens to the 'recipient' to the spender 'from' address from the
 ;; 'owner' address
-() transferFrom(slice from, int query_id, int amount, int owner_network, int owner_addr,
-                int recipient_network, int recipient_addr) impure {
+() transferFrom(slice from, int query_id, int amount, slice owner_addr, slice recipient_addr) impure {
   var ds = load_data();
   (cell name, int decimals, cell symbol, int supply, cell balances, cell approvals) = ds;
-
-  (int from_network, int from_addr) = from.parse_std_addr();
-
-  if (from_network != recipient_network) {
-    return transferFromResponse(from, query_id, Token::WrongNetwork());
-  }
-  if (from_network != owner_network) {
-    return transferFromResponse(from, query_id, Token::WrongNetwork());
-  }
-
-  ;; look for approvals record
-  cell network_approvals = approvals.idict_get_ref(8, from_network);
-  if (network_approvals.cell_null?()) {
-    return transferFromResponse(from, query_id, Token::NoAllowance());
-  }
-
-  (network_approvals, int result) = spend_approval(network_approvals, owner_addr, from_addr, amount);
+  slice from_addr = pack_addr_from_std(from);
+  
+  (approvals, int result) = spend_approval(approvals, owner_addr, from_addr, amount);
 
   if (result != Token::Ok()) {
     return transferFromResponse(from, query_id, result);
   }
 
-  (balances, int result) = transfer_internal(from_network, owner_addr, query_id, amount,
-                                             recipient_addr, balances);
+  (balances, int result) = spend_balances(balances, owner_addr, recipient_addr, amount);
 
   if (result != Token::Ok()) {
     return transferFromResponse(from, query_id, result);
   }
 
   ;; update approvals info
-  approvals~idict_set_ref(8, from_network, network_approvals);
   ds = (name, decimals, symbol, supply, balances, approvals);
   store_data(ds);
   return transferFromResponse(from, query_id, Token::Ok());
@@ -326,29 +280,25 @@ _ load_data() impure {
   ;; args (uint256 amount, int8 recipient_network, uint256 recipient_address)
   if (op == ApiOps::Transfer()) {
     int amount = in_msg~load_uint(256);
-    int recipient_network = in_msg~load_int(8);
-    int recipient_address = in_msg~load_uint(256);
-    return transfer(sender, query_id, amount, recipient_network, recipient_address);
+    slice recipient_address = in_msg~load_bits(264);
+    return transfer(sender, query_id, amount, recipient_address);
   }
 
   ;; approve
-  ;; args (uint256 amount, uint256 spender)
+  ;; args (uint256 amount, int8 spender_network, uint256 spender_address)
   if (op == ApiOps::Approve()) {
     int amount = in_msg~load_uint(256);
-    int spender_network = in_msg~load_int(8);
-    int spender_address = in_msg~load_uint(256);
-    return approve(sender, query_id, amount, spender_network, spender_address);
+    slice spender_address = in_msg~load_bits(264);
+    return approve(sender, query_id, amount, spender_address);
   }
 
   ;; transfer on behalf of spender
-  ;; args (uint256 amount, uint256 from_addr, uint256 to_addr)
+  ;; args (uint256 amount, int8 from_network, uint256 from_address, int8 to_network, uint256 to_address)
   if (op == ApiOps::TransferFrom()) {
     int amount = in_msg~load_uint(256);
-    int from_network = in_msg~load_int(8);
-    int from_address = in_msg~load_uint(256);
-    int to_network = in_msg~load_int(8);
-    int to_address = in_msg~load_uint(256);
-    return transferFrom(sender, query_id, amount, from_network, from_address, to_network, to_address);
+    slice from_address = in_msg~load_bits(264);
+    slice to_address = in_msg~load_bits(264);
+    return transferFrom(sender, query_id, amount, from_address, to_address);
   }
 
   return send_message(sender, Token::NoOp(), query_id, 0, 0, 64);
@@ -412,12 +362,8 @@ cell getapprovals() method_id {
 ;; get balance
 int getbalance(int from_network, int from_address) method_id {
 	(_, _, _, _, cell balances, _) = load_data();
-  cell network_balances = balances.idict_get_ref(8, from_network);
-  if (network_balances.cell_null?()) {
-    return 0;
-  }
-
-  (slice sender_record, int sender_found) = network_balances.udict_get?(256, from_address);
+  slice from_address_full = pack_addr(from_network, from_address);
+  (slice sender_record, int sender_found) = balances.dict_get?(264, from_address_full);
   if (sender_found == 0) {
     return 0;
   }
