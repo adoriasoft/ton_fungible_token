@@ -205,7 +205,7 @@
 
 ### Deployment
 
-Test contract is deployed at address kf82L1cdiQ4p9mQgotoWWRWVrP-PAx9Rz5BexbwL21XsuVwu in the TON testnet2.
+Test contract is deployed at address kf_pV_iUiWRPOJhmI9WIOszOlZXF3YTLFInGNOFyZi7LLuit in the TON testnet2.
 
 Token owner private key is contained in
 ```bash
