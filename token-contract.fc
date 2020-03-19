@@ -229,7 +229,7 @@ _ load_data() impure {
   var ds = load_data();
   (cell name, int decimals, cell symbol, int supply, cell balances, cell approvals) = ds;
   slice from_addr = pack_addr_from_std(from);
-  
+
   (approvals, int result) = spend_approval(approvals, owner_addr, from_addr, amount);
 
   if (result != Token::Ok()) {
@@ -283,6 +283,14 @@ _ load_data() impure {
     slice recipient_address = in_msg~load_bits(264);
     return transfer(sender, query_id, amount, recipient_address);
   }
+
+  ;; Token approvals may be attacked as described here: https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM/edit
+  ;; This issue should be mitigated with proper contract usage:
+  ;; - get user balance before approving
+  ;; - approve user with 0 value (reset approval)
+  ;; - get user balance again - it should not change
+  ;; - if balance was changed - transfer should be terminated - you've been attacked
+  ;; - approve user to transfer
 
   ;; approve
   ;; args (uint256 amount, int8 spender_network, uint256 spender_address)

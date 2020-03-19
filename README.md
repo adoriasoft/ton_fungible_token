@@ -227,6 +227,18 @@ Token owner address for lite-client 'getbalance' request is:
 11940668616038190933510003492525825940569683466691253499213030567732558073356
 ```
 
+### Usage notice
+
+Token approvals may be attacked as described here: https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM/edit
+
+This issue should be mitigated with proper contract usage:
+
+- get user balance before approving
+- approve user with 0 value (reset approval)
+- get user balance again - it should not change
+- if balance was changed - transfer should be terminated - you've been attacked
+- approve user to transfer
+
 ### Future improvements
 
 1. Burnable and mintable tokens.
